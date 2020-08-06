@@ -4,14 +4,26 @@ from datetime import datetime, time, timedelta, timezone
 import time
 import requests
 import json
-
+import RPi.GPIO as GPIO
 MQTT_broker = "192.168.1.8"
-sub_topic01 = "test01"
-sub_topic02 = "test02"
 sub_topics = [("chickencoop/door", 0), ("chickencoop/test",0) ]
 pub_topics = [("chickencoop/temperature", 0), ("chickencoop/humidity", 0), ("chickencoop/time",0)]
 door_open=false
-reed_switch = 13#numer pinu
+
+reed_switch = 13 #numer pinu
+DIR = 20   # Direction GPIO Pin
+STEP = 21  # Step GPIO Pin
+CW = 1     # Clockwise Rotation
+CCW = 0    # Counterclockwise Rotation
+SPR = 200   # Steps per Revolution (360 / 1.5)
+
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(DIR, GPIO.OUT)
+GPIO.setup(STEP, GPIO.OUT)
+GPIO.output(DIR, CW)
+
+step_count = SPR
+delay = .018
 # --------------------------Temperature-------------
 def get_temp():
     sensor = Adafruit_DHT.DHT11
@@ -49,6 +61,21 @@ def get_times():
     #    r = requests.get(url)
     return time_utc, d.strftime("%d %m %Y %H:%M:%S")
 #-----------------------Stepper_motor---------------
+def open():
+    for x in range(step_count):
+        GPIO.output(STEP, GPIO.HIGH)
+        sleep(delay)
+        GPIO.output(STEP, GPIO.LOW)
+        sleep(delay)
+    GPIO.cleanup()
+def close():
+    GPIO.output(DIR, CCW)
+    for x in range(step_count):
+        GPIO.output(STEP, GPIO.HIGH)
+        sleep(delay)
+        GPIO.output(STEP, GPIO.LOW)
+        sleep(delay)
+    GPIO.cleanup()
 def calibration():
     if reed_switch: # jesli stan jest wysoki to znaczy ze jest na gorze/dole
         while not reed_switch: #poki jest na dole to podnos
